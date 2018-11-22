@@ -15,7 +15,8 @@
 
 static struct my_block_dev {
     //...
-	// TODO data array or a data structure where the data is stored ?
+    // TODO data array or a data structure where the data is stored ?
+    // Maybe need to study CH.8 of ldd3 book
     spinlock_t lock;                /* For mutual exclusion */
     struct request_queue *queue;    /* The device request queue */
     struct gendisk *gd;             /* The gendisk structure */
@@ -41,20 +42,23 @@ static int my_block_release(struct gendisk *gd, fmode_t mode)
 struct block_device_operations my_block_ops = {
     .owner = THIS_MODULE,
     .open = my_block_open,
-    .release = my_block_release
+    .release = my_block_release,
+	//.rw_page = my_block_rw_page
+	//.ioctl = my_block_ioctl,
+	//.direct_access = my_block_direct_access
 };
 
-//TODO since
+
 static int create_block_device(struct my_block_dev *dev)
 {
-	// TODO ? Allocate memory and initialize simulated RAM device
-	//(pages/ sectors/ partition of RAM disk memory or block/ sector /cylinders/ heads/ tracks/ etc. of HDD)
+    // TODO ? Allocate memory and initialize simulated RAM device
+    //(pages/ sectors/ partition of RAM disk memory or block/ sector /cylinders/ heads/ tracks/ etc. of HDD)
 	
-	//Need to decide simulated device type (Random access/ direct access of request OR sequential access of request)
-	//Check whether it will have repercussions with the perf monitor and file r/w load distribution
-	//(Maybe sequential access will make file split/ partitioning load distribution pointless as device I/O or the r/w request is processed 1-by-1)
+    //Need to decide simulated device type (Random access/ direct access of request OR sequential access of request)
+    //Check whether it will have repercussions with the perf monitor and file r/w load distribution
+    //(Maybe sequential access will make file split/ partitioning load distribution pointless as device I/O or the r/w request is processed 1-by-1)
 	
-    //Register block device
+    //Register block device, optional, tradition
     if(register_blkdev(MY_BLOCK_MAJOR, MY_BLKDEV_NAME) <= 0)
     {
         printk(KERN_WARNING "CS533: register_blkdev failure\n");
@@ -65,7 +69,7 @@ static int create_block_device(struct my_block_dev *dev)
     dev->gd = alloc_disk(MY_BLOCK_MINORS);
     if (!dev->gd) {
         printk (KERN_NOTICE "CS533: alloc_disk failure\n");
-		unregister_blkdev(MY_BLOCK_MAJOR, MY_BLKDEV_NAME)
+        unregister_blkdev(MY_BLOCK_MAJOR, MY_BLKDEV_NAME)
         return -ENOMEM;
     }
 
@@ -92,9 +96,9 @@ static int create_block_device(struct my_block_dev *dev)
 	
 	out_err:
     blk_cleanup_queue(dev->queue);
-	del_gendisk(dev->gd);	
+    del_gendisk(dev->gd);	
     put_disk(dev->gd);		
-	unregister_blkdev(MY_BLOCK_MAJOR, MY_BLKDEV_NAME);
+    unregister_blkdev(MY_BLOCK_MAJOR, MY_BLKDEV_NAME);
     return -ENOMEM;
 }
 
@@ -131,24 +135,25 @@ static int my_block_init(void)
        printk(KERN_ERR "unable to register mybdev block device\n");
        return -EBUSY;
 	}
+	return 0;
     //...
 }
 
 static void delete_block_device(struct my_block_dev *dev)
 {
  	if(dev->queue) {
-		blk_cleanup_queue(dev->queue);
+        blk_cleanup_queue(dev->queue);
 	}
 	if (dev->gd) {
         del_gendisk(dev->gd);
-		put_disk(dev->gd);
+        put_disk(dev->gd);
     }
     //...
 }
 
 static void my_block_exit(void)
 {
-	delete_block_device(&dev);
+    delete_block_device(&dev);
     unregister_blkdev(MY_BLOCK_MAJOR, MY_BLKDEV_NAME);
     //...
 }
