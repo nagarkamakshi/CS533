@@ -6,10 +6,11 @@
 #include <linux/fs.h>
 #include <linux/blkdev.h>
 #include <linux/kernel.h>	/* printk() */
+#include <linux/bio.h>
 
-#define MY_BLOCK_MAJOR           240	//240-254 is for local/ experimental use
-#define MY_BLKDEV_NAME          "mybdev"
-#define NR_SECTORS                   1024
+#define MY_BLOCK_MAJOR           240		//240-254 is for local/ experimental use
+#define MY_BLKDEV_NAME          "mybdev"	
+#define NR_SECTORS                   1024	
 #define MY_BLOCK_MINORS       1
 #define KERNEL_SECTOR_SIZE           512
 
@@ -68,24 +69,36 @@ static int create_block_device(struct my_block_dev *dev)
     dev->data = vmalloc(dev->size);
     if (dev->data == NULL) {
         printk (KERN_NOTICE "CS533: vmalloc failure.\n");
-        return;
+        return -1;
     }
 	
     //Register block device, optional since we statically define major number 240, tradition
-    if(register_blkdev(MY_BLOCK_MAJOR, MY_BLKDEV_NAME) <= 0)
+    if(register_blkdev(MY_BLOCK_MAJOR, "myblock") <= 0)
     {
         printk(KERN_WARNING "CS533: register_blkdev failure\n");
         vfree(dev->data);
         return -EBUSY;
     }
 	
+	/* Initialize the I/O queue */
+    spin_lock_init(&dev->lock);
+    dev->queue = blk_init_queue(my_block_request, &dev->lock);	//If we will use Random Access/ no request queue
+	                                                            //use blk_alloc_queue(GFP_KERNEL) instead
+																//and implement a make request function
+    if (dev->queue == NULL) {
+        printk(KERN_WARNING "CS533: blk_init_queue failure\n");
+        unregister_blkdev(MY_BLOCK_MAJOR, "myblock");
+        vfree(dev->data);
+	}
+    
+    blk_queue_logical_block_size(dev->queue, KERNEL_SECTOR_SIZE);
+    dev->queue->queuedata = dev;
+	
     /* Initialize the gendisk structure */
     dev->gd = alloc_disk(MY_BLOCK_MINORS);
     if (!dev->gd) {
         printk (KERN_NOTICE "CS533: alloc_disk failure\n");
-        unregister_blkdev(MY_BLOCK_MAJOR, MY_BLKDEV_NAME)
-        vfree(dev->data);
-        return -ENOMEM;
+        goto out_err;
     }
 
     dev->gd->major = MY_BLOCK_MAJOR;
@@ -97,30 +110,38 @@ static int create_block_device(struct my_block_dev *dev)
     set_capacity(dev->gd, NR_SECTORS);
 
     add_disk(dev->gd);
-	
-	/* Initialize the I/O queue */
-    spin_lock_init(&dev->lock);
-    dev->queue = blk_init_queue(my_block_request, &dev->lock);	//If we will use Random Access/ no request queue
-	                                                            //use blk_alloc_queue(GFP_KERNEL) instead
-																//and implement a make request function
-    if (dev->queue == NULL)
-        goto out_err;
-    blk_queue_logical_block_size(dev->queue, KERNEL_SECTOR_SIZE);
-    dev->queue->queuedata = dev;
+
     //...
 
 	return 0;
 	
 	out_err:
-    blk_cleanup_queue(dev->queue);
-    del_gendisk(dev->gd);	
-    put_disk(dev->gd);		
+	blk_cleanup_queue(dev->queue);
     unregister_blkdev(MY_BLOCK_MAJOR, MY_BLKDEV_NAME);
-    vfree(dev->data);vfree(dev->data);
+    vfree(dev->data);
     return -ENOMEM;
 }
 
-//The request function depends on
+static int my_block_process_request_rw(struct my_block_dev *dev, sector_t sector,
+               unsigned long length, char *buffer, int rwflag)
+{
+               unsigned long offset = sector * KERNEL_SECTOR_SIZE;
+			   
+			   //Prevent read/write beyond block device memory
+			   if((offset + length) > dev->size)
+				   return 1;
+			   
+			   //Write from buffer to device memory at data+offset
+			   if(rwflag == 1)
+				   memcpy(dev->data + offset, buffer, length);
+			   else
+				   //Write from device memory to buffer at data+offset
+				   memcpy(buffer, dev->data + offset, length);
+			   
+			   return 0;
+}
+
+
 static void my_block_request(struct request_queue *q)
 {
     struct request *rq;
@@ -132,13 +153,25 @@ static void my_block_request(struct request_queue *q)
             break;
 
         if (blk_rq_is_passthrough(rq)) {
-            printk (KERN_NOTICE "Skip non-fs request\n");
+            printk (KERN_NOTICE "CS533: Skip non-fs request\n");
             __blk_end_request_all(rq, -EIO);
            continue;
         }
+		
+		//DEBUG, Print request info
+		printk(KERN_LOG_LEVEL
+			"CS533: request received: pos=%llu bytes=%u "
+			"cur_bytes=%u dir=%c\n",
+			(unsigned long long) blk_rq_pos(rq), blk_rq_bytes(rq), 
+			blk_rq_cur_bytes(rq), rq_data_dir(rq) ? 'W' : 'R');
 
         /* do work */
         //... Maybe call the r/w function? or handled by bio? or simple/ full transfer request?
+		
+		//Call simple request processing function
+		if(my_block_process_request_rw(dev, blk_rq_pos(rq), blk_rq_bytes(rq), 
+		   bio_data(rq->bio), (rq_data_dir(rq))) == 1)
+		   printk(KERN_NOTICE "CS533: Read/ Write request failed\n");
 
         __blk_end_request_all(rq, 0);
     }
@@ -151,7 +184,7 @@ static int my_block_init(void)
     status = create_block_device(&dev);
     if (status < 0)
 	{
-       printk(KERN_ERR "unable to register mybdev block device\n");
+       printk(KERN_ERR "CS533: unable to register mybdev block device\n");
        return -EBUSY;
 	}
 	return 0;
@@ -176,6 +209,6 @@ static void delete_block_device(struct my_block_dev *dev)
 static void my_block_exit(void)
 {
     delete_block_device(&dev);
-    unregister_blkdev(MY_BLOCK_MAJOR, MY_BLKDEV_NAME);
+    unregister_blkdev(MY_BLOCK_MAJOR, "myblock");
     //...
 }
