@@ -9,7 +9,7 @@
 #include <linux/bio.h>
 
 #define MY_BLOCK_MAJOR           240		//240-254 is for local/ experimental use
-#define MY_BLKDEV_NAME          "mybdev"	
+#define MY_BLKDEV_NAME          "myblock"	
 #define NR_SECTORS                   1024	
 #define MY_BLOCK_MINORS       1
 #define KERNEL_SECTOR_SIZE           512
@@ -121,7 +121,7 @@ static int create_block_device(struct my_block_dev *dev)
 	
 	out_err:
 	blk_cleanup_queue(dev->queue);
-    unregister_blkdev(MY_BLOCK_MAJOR, MY_BLKDEV_NAME);
+    unregister_blkdev(MY_BLOCK_MAJOR, "mybdev");
     vfree(dev->data);
     return -ENOMEM;
 }
@@ -186,7 +186,7 @@ static int my_block_init(void)
     status = create_block_device(&dev);
     if (status < 0)
 	{
-       printk(KERN_ERR "CS533: unable to register mybdev block device\n");
+       printk(KERN_ERR "CS533: unable to register myblock block device\n");
        return -EBUSY;
 	}
 	return 0;
@@ -214,3 +214,6 @@ static void my_block_exit(void)
     unregister_blkdev(MY_BLOCK_MAJOR, "myblock");
     //...
 }
+
+module_init(my_block_init);
+module_exit(my_block_exit);
