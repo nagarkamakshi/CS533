@@ -179,7 +179,7 @@ static void my_block_request(struct request_queue *q)
     }
 }
 
-static int my_block_init(void)
+static int __init my_block_init(void)
 {
     int status;
     //...
@@ -208,7 +208,7 @@ static void delete_block_device(struct my_block_dev *dev)
     //...
 }
 
-static void my_block_exit(void)
+static void __exit my_block_exit(void)
 {
     delete_block_device(&dev);
     unregister_blkdev(MY_BLOCK_MAJOR, "myblock");
