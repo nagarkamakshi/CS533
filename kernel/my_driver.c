@@ -77,7 +77,7 @@ static int create_block_device(struct my_block_dev *dev)
     }
 	
     //Register block device, optional since we statically define major number 240, tradition
-    if(register_blkdev(MY_BLOCK_MAJOR, "myblock") <= 0)
+    if(register_blkdev(MY_BLOCK_MAJOR, "myblock") < 0)
     {
         printk(KERN_WARNING "CS533: register_blkdev failure\n");
         vfree(dev->data);
