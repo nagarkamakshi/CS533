@@ -14,6 +14,9 @@
 #define MY_BLOCK_MINORS       1
 #define KERNEL_SECTOR_SIZE           512
 
+MODULE_LICENSE("GPL");
+
+//Internal representation of the block device driver
 static struct my_block_dev {
     //...
     // TODO data array or a data structure where the data is stored ?
@@ -35,15 +38,16 @@ static int my_block_open(struct block_device *bdev, fmode_t mode)
     return 0;
 }
 
-static int my_block_release(struct gendisk *gd, fmode_t mode)
+static void my_block_release(struct gendisk *gd, fmode_t mode)
 {
     //...
 	printk(KERN_INFO "CS533 Device released.\n");
-    return 0;
+    return;
 }
 
 //TODO myblock_ioctl?
 
+//Operations supported by block device
 struct block_device_operations my_block_ops = {
     .owner = THIS_MODULE,
     .open = my_block_open,
@@ -53,7 +57,7 @@ struct block_device_operations my_block_ops = {
 	//.direct_access = my_block_direct_access
 };
 
-
+//Module init function
 static int create_block_device(struct my_block_dev *dev)
 {
     // TODO ? Allocate memory and initialize simulated RAM device
@@ -64,7 +68,7 @@ static int create_block_device(struct my_block_dev *dev)
     //(Maybe sequential access will make file split/ partitioning load distribution pointless as device I/O or the r/w request is processed 1-by-1)
 	
 	//From sample Allocate vmem for data array
-    memset (dev, 0, sizeof (struct sbull_dev));
+    memset (dev, 0, sizeof (struct my_block_dev));
     dev->size = NR_SECTORS * KERNEL_SECTOR_SIZE;
     dev->data = vmalloc(dev->size);
     if (dev->data == NULL) {
@@ -158,10 +162,8 @@ static void my_block_request(struct request_queue *q)
            continue;
         }
 		
-		//DEBUG, Print request info
-		printk(KERN_LOG_LEVEL
-			"CS533: request received: pos=%llu bytes=%u "
-			"cur_bytes=%u dir=%c\n",
+		//Print request info
+		printk(KERN_INFO "CS533: request received: pos=%llu bytes=%u cur_bytes=%u dir=%c\n",
 			(unsigned long long) blk_rq_pos(rq), blk_rq_bytes(rq), 
 			blk_rq_cur_bytes(rq), rq_data_dir(rq) ? 'W' : 'R');
 
@@ -194,7 +196,7 @@ static int my_block_init(void)
 static void delete_block_device(struct my_block_dev *dev)
 {
  	if(dev->queue) {
-        blk_cleanup_queue(dev->queue);
+            blk_cleanup_queue(dev->queue);
 	}
 	if (dev->gd) {
         del_gendisk(dev->gd);
