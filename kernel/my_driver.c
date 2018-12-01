@@ -108,7 +108,7 @@ static int create_block_device(struct my_block_dev *dev)
     dev->gd->first_minor = 0;						//First minor device number corresponding to disk, 
 													//used for how driver partition the device, not to important for our simple device
 	snprintf (dev->gd->disk_name, 32, "myblock");	//Write name of disk, used in creating a sysfs directory for the device
-    dev->gd->fops = &my_block_ops;					//The file operations supported by the device, set it to our struct above
+    dev->gd->fops = &my_block_ops;					//The device operations supported by the device, set it to our struct above
     dev->gd->queue = dev->queue;					//The request queue that will handle device operations for the disk
     dev->gd->private_data = dev;					//Used for storage of driver private data, store the internal representation here
     set_capacity(dev->gd, NR_SECTORS);				//Size of disk, in Numbers of Sectors
@@ -119,7 +119,7 @@ static int create_block_device(struct my_block_dev *dev)
 	
 	out_err:
 	blk_cleanup_queue(dev->queue);
-    unregister_blkdev(MY_BLOCK_MAJOR, "mybdev");
+    unregister_blkdev(MY_BLOCK_MAJOR, "myblock");
     vfree(dev->data);
     return -ENOMEM;
 }
