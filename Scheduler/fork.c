@@ -69,7 +69,8 @@ int  main(int argc, char *argv[])
         fd = open(DEVICE_NAME, O_RDWR);
         int b;
 
-        if(fork()==0)
+        cPid=fork();
+        if(cPid>=0)
         {
 	        printf("From child, the i value: %d\n",i); 
 	        printf("child pid %d from parent pid %d\n",getpid(),getppid());
@@ -92,7 +93,7 @@ int  main(int argc, char *argv[])
             fprintf(f,"%s",data);
 	        fclose(f);
 
-            for(;;) 
+            for(int count=0;count<100000;count++) 
 	        {
                 for (b = 0; b < sizeof(buffer) / sizeof(buffer[0]); b++)
                    buffer[b] = rand() % max_elem_value(buffer[0]);
