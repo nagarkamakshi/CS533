@@ -17,21 +17,13 @@
 
 
 #define DEVICE_NAME "/dev/CS533_myblock"
-#define MODULE_NAME     "ram-disk"
 #define MY_BLOCK_MAJOR  "240"
 #define MY_BLOCK_MINOR  "0"
-
-#define max_elem_value(elem)    \
-        (1 << 8*sizeof(elem))
-
-static unsigned char buffer[SECTOR_SIZE];
-static unsigned char buffer_copy[SECTOR_SIZE];
-
 
 int  main(int argc, char *argv[])
 {
     int number_forks;
-    int i,c;
+    int i;
     char data[10000];
     char fname[15];
     int split_size,ipos,epos;
@@ -57,20 +49,24 @@ int  main(int argc, char *argv[])
     printf("Enter no.of forks needed:");
     scanf("%d",&number_forks);
 
+	//Split file into pieces
     split_size=(int)(file_size/number_forks);
     printf("split size %d\n",split_size);
     pid_t  pid;
-    FILE *files[number_forks];
     
+	//Open the block device
+	int fd;
+    fd = open(DEVICE_NAME, O_RDWR);
+	
     for(i=0;i<number_forks;i++)
     {
-        int sector = i;
-        int fd;
-        fd = open(DEVICE_NAME, O_RDWR);
-        int b;
+		//Limit sector number for the write to the device to NR of sectors defined in macro at file header
+        int sector = i % NR_SECTORS;
 
         if(fork()==0)
         {
+			//Child Only, Get their part of the split data and write to device
+			//Get the split data
 	        printf("From child, the i value: %d\n",i); 
 	        printf("child pid %d from parent pid %d\n",getpid(),getppid());
             ipos=(i*split_size)+i;
@@ -81,43 +77,27 @@ int  main(int argc, char *argv[])
 	        fseek(fp, -split_size, SEEK_CUR);
             fgets ( data, split_size, fp );
             printf("File data: %s\n", data);
-	        sprintf(fname,"file%d.txt",i);
-	        printf("File created is %s",fname);
-	        FILE *f = fopen(fname,"w");
-	        if(f==NULL)
-	        {
-		        printf("Error!");
-		        exit(1);
-	        }
-            fprintf(f,"%s",data);
-	        fclose(f);
+	        
+			//Write data to device
+			lseek(fd, sector * SECTOR_SIZE, SEEK_SET);
+			write(fd, data, split_size);
+			fsync(fd);
 
-            for(;;) 
-	        {
-                for (b = 0; b < sizeof(buffer) / sizeof(buffer[0]); b++)
-                   buffer[b] = rand() % max_elem_value(buffer[0]);
-                lseek(fd, sector * SECTOR_SIZE, SEEK_SET);
-                write(fd, buffer, sizeof(buffer));
-                fsync(fd);
-                lseek(fd, sector * SECTOR_SIZE, SEEK_SET);
-                read(fd, buffer_copy, sizeof(buffer_copy));
-                printf("[%d]test sector %3d ... ", getpid(), sector);
-                if (memcmp(buffer, buffer_copy, sizeof(buffer_copy)) == 0)
-                    printf("passed\n");
-                else
-                    printf("failed\n");
-            }
-             exit(0);
+            exit(0);
         }
         else 
 		{
+			//Parent Only, do the CPU set affinity
             CPU_ZERO(&mask);
             CPU_SET(1+i, &mask);
             printf("Mask valu set 0x%x", mask);
             sched_setaffinity(cPid, sizeof(cpu_set_t), &mask);
         }
     }
+	//Parent wait for child proc to finish...
     for(i=0;i<number_forks;i++)  
 	    wait(NULL);
+	
+	return 0;
 }
 
