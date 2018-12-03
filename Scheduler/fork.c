@@ -15,6 +15,7 @@
 #define NR_SECTORS      128		//Max number of sectors, used to limit the sectors the child processes can access.
 #define SECTOR_SIZE     512
 #define NCPUS			8		//Number of CPUS of the system
+#define NWRITES			10000	//Number of write operations per process, used to stretch the writes so it is not instantaneous
 
 #define DEVICE_NAME "/dev/CS533_myblock"
 #define MY_BLOCK_MAJOR  "240"
@@ -27,6 +28,7 @@ int  main(int argc, char *argv[])
 	int cpu_input;
 	int ncpu = NCPUS;
 	bool cpu_aff[NCPUS];
+	int iwrite;
     int i;
     char data[10000];
     char fname[15];
@@ -104,7 +106,6 @@ int  main(int argc, char *argv[])
 		}
 	}
     
-	
 	//Split file into pieces
     split_size=(int)(file_size/number_forks);
     printf("split size %d\n",split_size);
@@ -136,9 +137,14 @@ int  main(int argc, char *argv[])
             printf("File data: %s\n", data);
 	        
 			//Write data to device
-			lseek(fd, sector * SECTOR_SIZE, SEEK_SET);
-			write(fd, data, split_size);
-			fsync(fd);
+			for(iwrite = 0; iwrite < NWRITES; ++iwrite)
+			{
+				printf("Child: %d writing...\n", i);
+				lseek(fd, sector * SECTOR_SIZE, SEEK_SET);
+				write(fd, data, split_size);
+				fsync(fd);
+			}
+
 
             exit(0);
         }
