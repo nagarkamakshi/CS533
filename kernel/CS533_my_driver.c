@@ -16,7 +16,7 @@
 
 #define MY_BLOCK_MAJOR           	240			//240-254 is for local/ experimental use
 #define MY_BLKDEV_NAME          	"CS533_myblock"	//Name of device driver
-#define NR_SECTORS                   	1024	//Number of sectors
+#define NR_SECTORS                   	128	//Number of sectors
 #define MY_BLOCK_MINORS       			1		//Number of Minors/ segments of device, set to 1 for simplest device with 1 segment
 #define KERNEL_SECTOR_SIZE           	512		//Size of a sector, which is how much sectors can operate on
 
