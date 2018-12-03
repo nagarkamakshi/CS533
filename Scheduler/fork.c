@@ -75,7 +75,7 @@ int  main(int argc, char *argv[])
 		
 		//Switch cpu bind selection value
 		cpu_aff[cpu_input] = !cpu_aff[cpu_input];
-		printf("CPU %d bind, set to %s", cpu_input, cpu_aff[cpu_input] ? "true" : "false");
+		printf("CPU %d bind, set to %s", cpu_input, cpu_aff[cpu_input] ? "true\n" : "false\n");
 		
 	}while(cpu_input != -1);
 	
@@ -100,7 +100,7 @@ int  main(int argc, char *argv[])
 		if(cpu_aff[i] == true)
 		{
 			CPU_SET(i, &mask);
-			printf("Mask valu set 0x%x", mask);
+			printf("Mask value set 0x%x", mask);
 		}
 	}
     
@@ -114,11 +114,12 @@ int  main(int argc, char *argv[])
 	int fd;
     fd = open(DEVICE_NAME, O_RDWR);
 	
+	
     for(i=0;i<number_forks;i++)
     {
 		//Limit sector number for the write to the device to NR of sectors defined in macro at file header
         int sector = i % NR_SECTORS;
-		cPid == fork();
+		cPid = fork();
         if(cPid==0)
         {
 			//Child Only, Get their part of the split data and write to device

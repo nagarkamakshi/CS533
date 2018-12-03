@@ -17,10 +17,8 @@
 int main(void)
 {
 	int fd;
-	size_t i;
-	int back_errno;
-	unsigned char test_string[] = "CS533BlockDeviceDriverTest";
-	unsigned char test_string_copy[27]";
+	const char test_string[] = "CS533BlockDeviceDriverTest";
+	char test_string_copy[27];
 	
 	printf("mknod " DEVICE_NAME " b " MY_BLOCK_MAJOR " " MY_BLOCK_MINOR "\n");
 	system("mknod " DEVICE_NAME " b " MY_BLOCK_MAJOR " " MY_BLOCK_MINOR "\n");
@@ -34,8 +32,8 @@ int main(void)
 	printf("Device should be opened now.\n");
 
 	lseek(fd, 0, SEEK_SET);
-	write(fd, test_string, strlen(test_string);
-	printf("Test string should be written into device.\n")
+	write(fd, test_string, strlen(test_string));
+	printf("Test string should be written into device.\n");
 
 	fsync(fd);
 
@@ -53,8 +51,6 @@ int main(void)
 	printf("Device should be closed now.\n");
 	
 	sleep(1);
-	printf("rmmod " MODULE_NAME "\n");
-	system("rmmod " MODULE_NAME "\n");
-
+	
 	return 0;
 }
