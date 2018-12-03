@@ -38,7 +38,7 @@ static void my_block_request(struct request_queue *q);
 //Doesn't do much since our device driver is simple
 static int my_block_open(struct block_device *bdev, fmode_t mode)
 {
-	//DEBUG printk(KERN_INFO "CS533 Device opened.\n");
+	printk(KERN_INFO "CS533 Device opened.\n");
     return 0;
 }
 
@@ -47,7 +47,7 @@ static int my_block_open(struct block_device *bdev, fmode_t mode)
 //Again, doesn't do much since our device driver is simple
 static void my_block_release(struct gendisk *gd, fmode_t mode)
 {
-	//DEBUG printk(KERN_INFO "CS533 Device released.\n");
+	printk(KERN_INFO "CS533 Device closed/ released.\n");
     return;
 }
 
@@ -66,14 +66,14 @@ static int create_block_device(struct my_block_dev *dev)
     dev->size = NR_SECTORS * KERNEL_SECTOR_SIZE;
     dev->data = vmalloc(dev->size);
     if (dev->data == NULL) {
-        //DEBUG printk (KERN_NOTICE "CS533: vmalloc failure.\n");
+        printk (KERN_NOTICE "CS533: vmalloc failure.\n");
         return -1;
     }
 	
     //Register block device, optional since we statically define major number as 240, but tradition
     if(register_blkdev(MY_BLOCK_MAJOR, "CS533_myblock") < 0)
     {
-        //DEBUG printk(KERN_WARNING "CS533: register_blkdev failure\n");
+        printk(KERN_WARNING "CS533: register_blkdev failure\n");
         vfree(dev->data);
         return -EBUSY;
     }
@@ -86,7 +86,7 @@ static int create_block_device(struct my_block_dev *dev)
 	                                                            //use blk_alloc_queue(GFP_KERNEL) instead
 																//and implement a make request function
     if (dev->queue == NULL) {
-        //DEBUG printk(KERN_WARNING "CS533: blk_init_queue failure\n");
+        printk(KERN_WARNING "CS533: blk_init_queue failure\n");
         unregister_blkdev(MY_BLOCK_MAJOR, "CS533_myblock");
         vfree(dev->data);
 	}
@@ -100,7 +100,7 @@ static int create_block_device(struct my_block_dev *dev)
     //Initialize the gendisk structure
     dev->gd = alloc_disk(MY_BLOCK_MINORS);
     if (!dev->gd) {
-        //DEBUG printk (KERN_NOTICE "CS533: alloc_disk failure\n");
+        printk (KERN_NOTICE "CS533: alloc_disk failure\n");
         goto out_err;
     }
 
@@ -158,13 +158,13 @@ static void my_block_request(struct request_queue *q)
 
 		//Check whether it is non file system (read/write) request, if so skip them
         if (blk_rq_is_passthrough(rq)) {
-            //DEBUG printk (KERN_NOTICE "CS533: Skip non-fs request\n");
+            printk (KERN_NOTICE "CS533: Skip non-fs request\n");
             __blk_end_request_all(rq, -EIO);
            continue;
         }
 		
 		//Print request info
-		//DEBUG printk(KERN_INFO "CS533: request received: pos=%llu bytes=%u cur_bytes=%u dir=%c\n",
+		printk(KERN_INFO "CS533: request received: pos=%llu bytes=%u cur_bytes=%u dir=%c\n",
 			(unsigned long long) blk_rq_pos(rq), blk_rq_bytes(rq), 
 			blk_rq_cur_bytes(rq), rq_data_dir(rq) ? 'W' : 'R');
 
@@ -177,7 +177,7 @@ static void my_block_request(struct request_queue *q)
 		//rq_data_dir(rq), Get the Read/ Write direction of the request
 		if(my_block_process_request_rw(dev, blk_rq_pos(rq), blk_rq_bytes(rq), 
 		   bio_data(rq->bio), (rq_data_dir(rq))) == 1)
-		   //DEBUG printk(KERN_NOTICE "CS533: Read/ Write request failed\n");
+		   printk(KERN_NOTICE "CS533: Read/ Write request failed\n");
 
         __blk_end_request_all(rq, 0);
     }
@@ -191,7 +191,7 @@ static int __init my_block_init(void)
     status = create_block_device(&dev);
     if (status < 0)
 	{
-       //DEBUG printk(KERN_ERR "CS533: unable to register CS533_myblock block device\n");
+       printk(KERN_ERR "CS533: unable to register CS533_myblock block device\n");
        return -EBUSY;
 	}
 	return 0;
