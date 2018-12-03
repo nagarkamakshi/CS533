@@ -165,8 +165,8 @@ static void my_block_request(struct request_queue *q)
 		
 		//Print request info
 		//DEBUG printk(KERN_INFO "CS533: request received: pos=%llu bytes=%u cur_bytes=%u dir=%c\n",
-			(unsigned long long) blk_rq_pos(rq), blk_rq_bytes(rq), 
-			blk_rq_cur_bytes(rq), rq_data_dir(rq) ? 'W' : 'R');
+		//	(unsigned long long) blk_rq_pos(rq), blk_rq_bytes(rq), 
+		//	blk_rq_cur_bytes(rq), rq_data_dir(rq) ? 'W' : 'R');
 
 		
 		//Pass the read/write request to our processing function
