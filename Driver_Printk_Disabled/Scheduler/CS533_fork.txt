@@ -1,0 +1,4 @@
+In exploration of block device drivers, we began exploring character device drivers. Char device drivers
+
+In Linux, Block device drivers facilitates devices like disk drives to transfer random accessible data in fixed-size blocks. Linux kernel differentiates block device drivers from character devices drivers by providing different interfaces and their own particular challenges. Focus of the block layer design is centered on performance. Blocks are fixed size of chunk of data determined by kernel. Usually the block size are 4096 bytes but varies depending on the architecture and the exact file system used. A sector is a small block whose size is usually determined by the underlying HW. Usually linux kernel works with the world of 512-bytes sector, and expects to be dealing with 512-byte sector. If a HW uses a different sector size then kernel’s sector size has to be scaled accordingly.
+
